@@ -34,11 +34,17 @@ The full research — build timeline and the three questions (context / quality 
 Requires Node.js ≥ 18 and npm. No build step, no dependencies.
 
 ```sh
-# install the skill into the current project
-npx dsh-quality-inspection install
+# install the skill into the current project (works from the GitHub repo, no npm publish needed)
+npx github:HengXin666/dsh-quality-inspection install
 
 # install into a specific project directory
-npx dsh-quality-inspection install /path/to/project
+npx github:HengXin666/dsh-quality-inspection install /path/to/project
+```
+
+Once published to npm, the same command works with the short form:
+
+```sh
+npx dsh-quality-inspection install
 ```
 
 Or add it as a dev dependency:
