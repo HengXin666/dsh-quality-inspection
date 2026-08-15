@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek Harness 工程方法 · 从零搭建史与三问三答</title>
+<style>
+  :root {
+    --bg:#0d1117; --bg-soft:#161b22; --bg-card:#1c2333; --line:#2d3748;
+    --text:#e6edf3; --text-dim:#9da7b3;
+    --accent:#4f8cff; --gold:#e3b341; --green:#3fb950; --purple:#bc8cff;
+    --red:#f85149; --cyan:#39c5cf; --pink:#ff7b72; --radius:12px;
+    --mono:"SFMono-Regular","Cascadia Code","JetBrains Mono",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;padding-bottom:80px}
+  ::selection{background:rgba(79,140,255,.35)}
+
+  .hero{text-align:center;padding:52px 24px 32px;border-bottom:1px solid var(--line);
+    background:radial-gradient(900px 400px at 50% -100px,rgba(79,140,255,.16),transparent 70%),#0d1117}
+  .hero .kicker{font-family:var(--mono);font-size:13px;letter-spacing:3px;color:var(--accent);text-transform:uppercase}
+  .hero h1{font-size:clamp(24px,3.8vw,38px);font-weight:800;margin:12px 0 10px}
+  .hero h1 .hl{background:linear-gradient(90deg,var(--accent),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .sub{color:var(--text-dim);max-width:800px;margin:0 auto;font-size:14.5px}
+  .hero .origin{font-family:var(--mono);font-size:12px;color:var(--gold);margin-top:10px}
+
+  .tabs{display:flex;justify-content:center;gap:10px;margin:26px auto 0;max-width:1080px;padding:0 24px;flex-wrap:wrap}
+  .tabbtn{font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text-dim);background:var(--bg-card);
+    border:1px solid var(--line);border-radius:10px;padding:10px 22px;cursor:pointer;transition:all .15s}
+  .tabbtn:hover{border-color:var(--accent);color:var(--text)}
+  .tabbtn.active{color:#fff;background:rgba(79,140,255,.18);border-color:var(--accent)}
+  .tabpanel{display:none}
+  .tabpanel.active{display:block}
+
+  .section{max-width:1080px;margin:0 auto;padding:44px 24px 0}
+  .section-title{font-size:23px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+  .section-title .tag{font-family:var(--mono);font-size:12px;font-weight:600;background:rgba(79,140,255,.15);
+    color:var(--accent);border:1px solid rgba(79,140,255,.4);padding:2px 10px;border-radius:20px}
+  .section-sub{color:var(--text-dim);font-size:14px;margin-bottom:24px}
+
+  .timeline{position:relative;padding-left:34px}
+  .timeline::before{content:"";position:absolute;left:10px;top:6px;bottom:6px;width:2px;
+    background:linear-gradient(180deg,var(--accent),var(--purple),var(--cyan));opacity:.5}
+  .tl-item{position:relative;margin-bottom:24px}
+  .tl-item::before{content:"";position:absolute;left:-32px;top:8px;width:14px;height:14px;border-radius:50%;
+    background:var(--bg);border:3px solid var(--c,var(--accent));box-shadow:0 0 0 4px rgba(79,140,255,.12)}
+  .tl-item .date{font-family:var(--mono);font-size:12px;color:var(--c,var(--accent));letter-spacing:1px;font-weight:700}
+  .tl-item .phase{font-size:18px;font-weight:800;margin:2px 0 6px}
+  .tl-item .desc{color:var(--text-dim);font-size:13.5px;margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:12px;padding:2px 10px;border-radius:20px;border:1px solid var(--line);
+    background:var(--bg-soft);color:var(--text);font-family:var(--mono)}
+  .chip.commit{color:var(--text-dim)}
+  .chip.commit b{color:var(--accent);font-weight:600}
+
+  .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .pillar{background:var(--bg-card);border:1px solid var(--line);border-top:3px solid var(--c,var(--accent));
+    border-radius:var(--radius);padding:18px 16px;display:flex;flex-direction:column;gap:9px}
+  .pillar .pnum{font-family:var(--mono);font-size:12px;color:var(--c,var(--accent));font-weight:700}
+  .pillar .ptitle{font-size:17px;font-weight:800}
+  .pillar .pone{font-size:12.5px;color:var(--text-dim);line-height:1.55}
+  .pillar ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  .pillar li{font-size:12.5px;padding-left:16px;position:relative;color:var(--text)}
+  .pillar li::before{content:"▹";position:absolute;left:0;color:var(--c,var(--accent))}
+  .p-determinism{--c:var(--accent)} .p-safety{--c:var(--green)}
+  .p-constraint{--c:var(--gold)} .p-quality{--c:var(--purple)}
+
+  .recipe{counter-reset:step;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+  .step{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .step .snum{counter-increment:step;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold)}
+  .step .snum::before{content:"STEP " counter(step) " / 8"}
+  .step .stitle{font-size:14.5px;font-weight:800;margin:3px 0}
+  .step .sdesc{font-size:12.5px;color:var(--text-dim)}
+
+  .qcard{background:var(--bg-card);border:1px solid var(--line);border-left:4px solid var(--c,var(--accent));
+    border-radius:var(--radius);padding:20px 20px;margin-bottom:18px}
+  .qcard .qq{font-size:16.5px;font-weight:800;margin-bottom:6px}
+  .qcard .qa{color:var(--text-dim);font-size:13px;margin-bottom:12px}
+  .point{margin-bottom:16px}
+  .point .pt{font-size:14.5px;font-weight:800;margin-bottom:4px;display:flex;align-items:baseline;gap:8px}
+  .point .pt .n{font-family:var(--mono);font-size:11.5px;color:var(--gold);font-weight:700}
+  .point .pd{font-size:13px}
+  .point .pd b{color:var(--text)}
+  .point .pd .dim{color:var(--text-dim)}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:13px}
+  .item{background:var(--bg-soft);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .item .it{font-size:13.5px;font-weight:800;margin-bottom:4px}
+  .item .it .n{font-family:var(--mono);font-size:11px;color:var(--cyan);font-weight:700;margin-right:6px}
+  .item .id{font-size:12px;color:var(--text-dim)}
+  .item .id b{color:var(--text)}
+
+  .doclink{font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all}
+  .quote{background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:9px 13px;
+    font-size:12px;color:var(--text-dim);font-family:var(--mono);margin:7px 0}
+
+  .docs{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:11px}
+  .doc{background:var(--bg-soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    text-decoration:none;color:var(--text);transition:border-color .15s}
+  .doc:hover{border-color:var(--accent)}
+  .doc .dpath{font-family:var(--mono);font-size:11.5px;color:var(--accent);word-break:break-all}
+  .doc .ddesc{font-size:11.5px;color:var(--text-dim);margin-top:3px}
+
+  .foot{text-align:center;color:var(--text-dim);font-size:12px;margin-top:50px;padding-top:18px;
+    border-top:1px solid var(--line);font-family:var(--mono)}
+  @media (max-width:640px){.hero{padding:38px 16px 26px}.section{padding:34px 16px 0}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="kicker">DeepSeek Harness · Engineering Method</div>
+  <h1>从零搭建一个 <span class="hl">AI Harness</span>：工程方法总结</h1>
+  <p class="sub">如何让 AI 的产出确定、可验证、有约束、有质量——基于 DeepSeek Harness（12294 个提交，2026-06-10 → 2026-08-14）的 git 历史与全部设计文档提炼。<br>本页由两份研究文档合并：① 搭建时间线 ② 三问三答（上下文 / 质量 / 掌控）。</p>
+  <div class="origin">origin: deepseek-harness · distilled into dsh-quality-inspection</div>
+  <div class="tabs">
+    <button class="tabbtn active" data-tab="tab-timeline">① 搭建时间线</button>
+    <button class="tabbtn" data-tab="tab-qa">② 三问三答</button>
+  </div>
+</div>
+
+<div class="tabpanel active" id="tab-timeline">
+<div class="section">
+  <div class="section-title">搭建时间线 <span class="tag">git history</span></div>
+  <div class="section-sub">从第 1 个 commit 开始，按天还原每一步。每一天都同时在做"搭功能"和"上约束"两件事。</div>
+  <div class="timeline">
+
+    <div class="tl-item" style="--c:var(--accent)">
+      <div class="date">2026-06-10 · DAY 0</div>
+      <div class="phase">开局定原则：先写规则，再写代码</div>
+      <div class="desc">只初始化了 README + AGENTS.md + CLAUDE.md 符号链接。第二个 commit 就把 MVP 需求分析与"微内核 Harness"设计文档写进 AGENTS.md —— 全项目的宪法是 <b>"everything is a plugin"（一切皆插件）</b>。</div>
+      <div class="chips">
+        <span class="chip commit"><b>b67e81ac97</b> Initialize repo</span>
+        <span class="chip commit"><b>804eede9eb</b> Link MVP + microkernel docs</span>
+      </div>
+    </div>
+
+    <div class="tl-item" style="--c:var(--accent)">
+      <div class="date">2026-06-11 · DAY 1</div>
+      <div class="phase">一天之内完成地基：微内核 + 可回放核心 + 全套质量门</div>
+      <div class="desc">Monorepo 基建（Yarn4/tsc -b/vitest）→ <b>Vendor Cordis 框架源码</b>（manifest + SHA 守卫，完全拥有框架层）→ 抽象服务接口包 → <b>实现 agent loop 插件</b>（流式 session/turn/step，当天就有回放等价测试）→ 可运行 echo-agent 示例。当晚连续加门：max-strict TS → ESLint → <b>每文件 100% 覆盖率</b> → knip/publint/约束 → lefthook 钩子 → CI 全矩阵。最后补记 7 个 ADR + 8 个 RFC，把质量方案全部制度化。</div>
+      <div class="chips">
+        <span class="chip">Yarn4 workspaces</span><span class="chip">vendor Cordis + 守卫</span>
+        <span class="chip">agent loop 插件</span><span class="chip">echo-agent</span>
+        <span class="chip">max-strict TS</span><span class="chip">100% 覆盖率门</span>
+        <span class="chip">7 ADR + 8 RFC</span>
+        <span class="chip commit"><b>43f4258277</b> Implement the agent loop plugin</span>
+      </div>
+    </div>
+
+    <div class="tl-item" style="--c:var(--cyan)">
+      <div class="date">2026-06-12 ~ 06-13 · DAY 2-3</div>
+      <div class="phase">第一个真能力：bash 三件套 + 双 LLM 适配器</div>
+      <div class="desc">落地<b>能力接缝（capability seam）</b>样板：Service Definition（dsh-shell 接口）+ Service Provider（dsh-bash-local 本地实现）+ Consumer（dsh-tool-bash 模型工具）。同一天加两个 DeepSeek LLM 适配器、coding-agent 示例、文档 cookbook。从此"换实现不碰模型契约"成为铁律。</div>
+      <div class="chips">
+        <span class="chip">capability seam 三件套</span><span class="chip">dsh-bash-local</span>
+        <span class="chip">DeepSeek ×2 适配器</span><span class="chip">coding-agent 示例</span>
+        <span class="chip commit"><b>8b5a3ef730</b> Add bash execution</span>
+      </div>
+    </div>
+
+    <div class="tl-item" style="--c:var(--purple)">
+      <div class="date">2026-06-13 ~ 06-14 · DAY 3-4</div>
+      <div class="phase">核心防线落位：边界校验 + 不变量 + 属性测试 + 错误分类</div>
+      <div class="desc"><b>模型边界运行时参数校验</b>（RFC 005：validateArgs，模型乱调工具 → 结构化错误回给模型修正）→ <b>dev 不变量 + session 日志冻结</b>（RFC 008：关系断言、日志深冻结）→ <b>属性测试</b>（RFC 001，第一次跑就抓到 BlockAssembler 真实 bug）→ <b>doc-sync 门</b>（文档代码块必须能 typecheck）→ <b>结构化错误分类</b>（HarnessError 统一基类 + 稳定 code）。</div>
+      <div class="chips">
+        <span class="chip">validateArgs 边界校验</span><span class="chip">dev 不变量 + 日志冻结</span>
+        <span class="chip">属性测试（抓到真 bug）</span><span class="chip">doc-sync 门</span>
+        <span class="chip">HarnessError 分类</span>
+        <span class="chip commit"><b>36a30180b8</b> validate tool args at boundary</span>
+      </div>
+    </div>
+
+    <div class="tl-item" style="--c:var(--green)">
+      <div class="date">2026-06-15 ~ 06-18 · DAY 5-8</div>
+      <div class="phase">持久化与隔离：session 落盘 + fs 能力缝 + 生命周期契约</div>
+      <div class="desc"><b>session 持久化</b>抽象 seam + JSONL 后端 + SQLite 双后端（同一套 runPersistenceContract 约束两端）→ agent create/resume 工厂 → pnpm 迁移（ADR 0016）→ <b>ACP bridge</b>（编辑器经 JSON-RPC stdio 驱动）→ <b>fs 能力缝</b>（先读后写、版本 CAS、原子写、结构化 FsError）→ <b>agent 生命周期/所有权契约</b>（AgentHandle 处置器、teardown 顺序保证持久性）。</div>
+      <div class="chips">
+        <span class="chip">session 持久化 seam</span><span class="chip">JSONL + SQLite 双后端</span>
+        <span class="chip">ACP bridge</span><span class="chip">fs 先读后写 + CAS</span>
+        <span class="chip">生命周期所有权</span>
+        <span class="chip commit"><b>df4b7d3d9a</b> session-persistence seam</span>
+      </div>
+    </div>
+
+    <div class="tl-item" style="--c:var(--gold)">
+      <div class="date">2026-06-20 ~ 07 · 第 3-4 周</div>
+      <div class="phase">生态扩展：subagent / scope / guard / spill / 沙箱 / workflow</div>
+      <div class="desc">subagent 能力缝（fresh/fork/ACP 三后端）→ <b>scope 隔离</b>（每 agent 一个不透明 key，注册只对自己可见）→ <b>guard 组</b>（repeat-tool-reminder 循环打断 + tool-call 超时策略）→ <b>spill</b>（大输出写私有文件，模型只见预览）→ <b>进程沙箱</b>（Linux bwrap/Landlock、macOS Seatbelt、Windows ACL；read-only/workspace-write 模式；fail-closed）→ workflow/plan/todo 等。</div>
+      <div class="chips">
+        <span class="chip">subagent seam</span><span class="chip">scope 每 agent 隔离</span>
+        <span class="chip">guard 循环卫生</span><span class="chip">spill 大输出</span>
+        <span class="chip">进程沙箱 fail-closed</span><span class="chip">workflow</span>
+      </div>
+    </div>
+
+    <div class="tl-item" style="--c:var(--pink)">
+      <div class="date">2026-08 · 第 9 周 → 发布</div>
+      <div class="phase">平台化与收口：bundle/profile、Web GUI、日志版本机制、公开发布</div>
+      <div class="desc">可安装的 bundle + profile 组合层（dsh-base/web-app/headless）→ Web 客户端与 TUI → <b>session 日志版本机制</b>（单调整数 + ignorable 标记，未知事件拒绝恢复而非静默跳过）→ 双语文档全量配对 → <b>0.1.0-rc.5 公开发布</b>（8 月 13 日）。</div>
+      <div class="chips">
+        <span class="chip">bundle / profile</span><span class="chip">Web GUI + TUI</span>
+        <span class="chip">日志版本机制</span><span class="chip">i18n 双语文档</span>
+        <span class="chip commit"><b>abe560f81e</b> release 0.1.0-rc.5</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">四个支柱：AI 产出如何被掌控 <span class="tag">the core question</span></div>
+  <div class="section-sub">整个搭建过程反复在回答同一个问题——如何保证 AI 的产出确定可验证、不破坏宿主、被强约束、有质量。</div>
+  <div class="pillars">
+
+    <div class="pillar p-determinism">
+      <div class="pnum">支柱 01</div>
+      <div class="ptitle">确定性 & 可验证性</div>
+      <div class="pone">Session = 只追加的事件日志，是单一事实源；模型历史由日志派生。验证不是事后补的测试，而是架构结构。</div>
+      <ul>
+        <li>事件溯源：日志即状态，回放/恢复 = 播种日志</li>
+        <li>"模型可见 ⟺ 已记录"运行时不变量</li>
+        <li>日志不可变 + 深冻结（剥离引用再入日志）</li>
+        <li>dev 关系不变量：请求 == 日志前缀重建</li>
+        <li>属性测试：生成参数 ↔ 校验器漂移检测</li>
+        <li>keyless 快照回放：ACP JSON-RPC + 日志 diff</li>
+        <li>日志版本机制：未知事件拒绝恢复，绝不静默读坏</li>
+      </ul>
+    </div>
+
+    <div class="pillar p-safety">
+      <div class="pnum">支柱 02</div>
+      <div class="ptitle">不破坏宿主系统</div>
+      <div class="pone">副作用被多层机制关进笼子：进程级沙箱 + 能力接缝 + 先读后写 + fail-closed 审批。</div>
+      <ul>
+        <li>进程沙箱：bwrap/Landlock/Seatbelt/ACL，fail-closed</li>
+        <li>能力三件套：换实现永不碰模型契约</li>
+        <li>fs：先读后写 + 版本 CAS + 原子写（0700 临时目录）</li>
+        <li>审批 fail-closed：unavailable 即拒绝，绝不开门</li>
+        <li>执行管道分层：权限门 / guard / 超时 / 结果变换</li>
+        <li>生命周期所有权：teardown 顺序承载持久性</li>
+        <li>协作式超时 + 大输出 spill 私有文件</li>
+      </ul>
+    </div>
+
+    <div class="pillar p-constraint">
+      <div class="pnum">支柱 03</div>
+      <div class="ptitle">约束力（有约束的产出）</div>
+      <div class="pone">"模型不能乱来"是硬边界：每个越界行为都变成可路由、可纠正、可回滚的事件。</div>
+      <ul>
+        <li>模型边界运行时参数校验（INVALID_ARGS 反馈闭环）</li>
+        <li>结构化错误分类：稳定 code 跨 seam 路由</li>
+        <li>闭合 union + assertNever + 品牌 ID</li>
+        <li>注册即效应：插件卸载全撤销（HMR 安全）</li>
+        <li>waterfall next() 语义：不调用即短路</li>
+        <li>guard：循环打断 + 每调用超时预算</li>
+        <li>配置失败响亮报错，绝不静默回退</li>
+      </ul>
+    </div>
+
+    <div class="pillar p-quality">
+      <div class="pnum">支柱 04</div>
+      <div class="ptitle">质量</div>
+      <div class="pone">核心决策（ADR 0007）：机械质量门优于散文规范——代理遵守被强制的门，远比遵守约定可靠。</div>
+      <ul>
+        <li>每文件 100% 覆盖率（CI 门）</li>
+        <li>max-strict TS + lint + jscpd 克隆检测</li>
+        <li>knip / publint / workspace 约束 / NodeNext</li>
+        <li>lefthook 本地 + CI 全矩阵（node 22/24/26）</li>
+        <li>doc-sync：文档代码块必须能 typecheck</li>
+        <li>5 级测试：unit / coverage / e2e / 快照 / 浏览器</li>
+        <li>验证世界而非自报；真实入口路径</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">方法论配方 <span class="tag">playbook</span></div>
+  <div class="section-sub">提炼成 8 步，可直接复用到任何"从零搭 AI Harness"的项目。</div>
+  <div class="recipe">
+    <div class="step"><div class="snum"></div><div class="stitle">先定原则，再写代码</div><div class="sdesc">第 2 个 commit 就是架构文档。"一切皆插件"的微内核是宪法，之后所有决策向它对齐。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">选底座，并完全拥有它</div><div class="sdesc">Vendor 框架源码 + manifest 守卫。框架内部行为（fiber/effect/waterfall）是正确性依赖，不能被上游 RC 偷换。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">第一块积木 = 可回放的核心</div><div class="sdesc">agent loop + 事件溯源 session 同一天落地。可回放是后面所有"可验证"的根。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">边界即权力</div><div class="sdesc">每个能力切 SD/Provider/Consumer 三件套。沙箱/审批/scope 都是部署策略，永不混进核心。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">模型边界单独设防</div><div class="sdesc">schema DSL + 运行时校验 + 结构化错误，把"编译期类型承诺"变成"运行时事实"。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">把每条承诺变成退出码</div><div class="sdesc">质量门、doc-sync、vendor 守卫…… 机械检查，不靠自觉。"承诺"必须可执行。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">决策记录制度化</div><div class="sdesc">RFC → ADR → Agent Notes 全流程。每个决定记下：为什么、放弃了什么、后果。</div></div>
+    <div class="step"><div class="snum"></div><div class="stitle">用代理开发，用代理审查</div><div class="sdesc">项目主要由编码代理开发；审查发现全部落成提交（历史里几百个 review-fix）。门是机械的，审查是语义的。</div></div>
+  </div>
+</div>
+</div>
+
+<div class="tabpanel" id="tab-qa">
+<div class="section" id="q1">
+  <div class="section-title">Q1 · 上下文如何规范化编写 <span class="tag">AGENTS.md 方法论</span></div>
+  <div class="section-sub">核心不是"把 AGENTS.md 写好"，而是建立了一套 <b>层级 + 机械门 + 生命周期</b> 的制度，让上下文"自动保持新鲜"，并靠 CI 而不是靠人记性来保证。</div>
+
+  <div class="qcard" style="--c:var(--accent)">
+    <div class="qq">问题：需求来得快去得快、代码新文档旧、多版本混杂，怎么解决？</div>
+    <div class="qa">答案是 <b>四层机制同时生效</b>，每一层对应一个症状：</div>
+    <div class="point"><div class="pt"><span class="n">1.1</span>「一个事实只有一个家」的分层体系</div>
+      <div class="pd">根 <span class="dim">AGENTS.md</span> 只放站立命令（每条 1-3 行，链接到归属地）；架构细节去 <span class="dim">architecture.md</span>；类型定义去 subsystems；"为什么"去 Agent Notes；事故去 postmortem；步骤指南去 cookbook。<b>每层只做一件事，别处只能链接</b>，从结构上消灭"同一事实被多份文档重复然后各自腐烂"。</div></div>
+    <div class="point"><div class="pt"><span class="n">1.2</span>「写当前状态，不写变更历史」</div>
+      <div class="pd">文档规范明文禁止 <span class="dim">"previously / now / no longer / renamed / was moved"</span>：文档永远只描述当前真实存在的机制；变更故事放 git、PR、Agent Notes、postmortem。<b>文档里根本不允许出现历史叙述</b>——多版本混杂从根上被禁掉。</div></div>
+    <div class="point"><div class="pt"><span class="n">1.3</span>「机械门 > 散文规范」</div>
+      <div class="pd">代理遵守被强制的门，远比遵守散文约定可靠。doc-sync 门组：文档里的 ts 代码块必须能 typecheck；粘贴的类型必须与源码逐字一致；markdown 链接/锚点必须有效；事件分类必须与代码同步。<b>文档与代码不同步 = CI 编译错误</b>。</div></div>
+    <div class="point"><div class="pt"><span class="n">1.4</span>「字数预算制」</div>
+      <div class="pd">对易膨胀文档设硬性字数上限（根 AGENTS.md ≤ 1600 词、architecture.md ≤ 1800）。加内容必须<b>位移或压缩</b>，否则 CI 红；超限文档冻结不能增长。加内容的那一刻就是做取舍决策的时刻。</div></div>
+    <div class="point"><div class="pt"><span class="n">1.5</span>「Agent Notes 生命周期」</div>
+      <div class="pd">非平凡改动<b>必须</b>在同一 PR 附 Agent Note：<span class="dim">proposed</span> → <span class="dim">implemented</span>（现在时描述已装现实，代码改名/移动时 note 必须同变更更新）→ <span class="dim">archived</span>（冻结，manifest + hash 校验）。已装 note 里的 "should / Plan" 会被门拒绝——<b>不许写未来时态冒充现状</b>。</div></div>
+    <div class="point"><div class="pt"><span class="n">1.6</span>「重命名账本」</div>
+      <div class="pd">发布前姿态是"地基优先于兼容性"：改名/重组自由，但必须<b>一个词汇表、拒绝旧名、无别名</b>。每个改名家族一张账本表（旧名 → 新名 → 理由），目录、npm 名、import、ctx 键、事件、文档全部同步。</div></div>
+  </div>
+
+  <div class="qcard" style="--c:var(--green)">
+    <div class="qq">补充：上下文到底怎么"喂"给 AI 的？——也是可验证的</div>
+    <div class="qa">上下文加载本身做成了可审计的机制（<span class="dim">dsh-agent-instructions</span> 插件）：</div>
+    <div class="point"><div class="pd">从 <span class="dim">$DSH_HOME/AGENTS.md</span> 开始，沿项目根到 cwd 逐目录发现 AGENTS.md/CLAUDE.md；字节相同的重复文件去重；文件被 AI 自己改/增/删后，<b>注入 "Updated instructions" / "Instructions removed" 会话事件</b>。基线指令以 system-reminder 形式进入持久化会话历史——<b>上下文本身符合"模型可见 ⟺ 已记录"不变量</b>，可回放、可审计。上下文不是靠人工每次都告知，而是<b>持续发现、自动注入、变更通知、可回放</b>的机制。</div></div>
+  </div>
+</div>
+
+<div class="section" id="q2">
+  <div class="section-title">Q2 · 与代码无关、可迁移的工程质量经验 <span class="tag">playbook</span></div>
+  <div class="section-sub">每条都是"方法/制度"，不含具体代码实现，可直接迁移到任何 AI 协作项目。</div>
+  <div class="grid2">
+    <div class="item"><div class="it"><span class="n">A</span>机械门优于散文规范</div>
+      <div class="id">把所有可机检的承诺变成<b>退出码</b>（CI 非零即失败）。"agents follow enforced gates far more reliably than prose conventions"。</div></div>
+    <div class="item"><div class="it"><span class="n">B</span>每文件 100% 覆盖率作为门，而非目标</div>
+      <div class="id">未覆盖的行往往不是"缺测试"，而是<b>死代码该删</b>。门的存在强制"加代码"必须附带"删代码/测代码"的决策。</div></div>
+    <div class="item"><div class="it"><span class="n">C</span>属性测试补覆盖率的盲区</div>
+      <div class="id">覆盖率证明"行跑过"，不证明"行为对"。fast-check 生成随机输入 + 故意破坏，首次运行就抓到真实 bug；钉住"类型承诺 vs 运行时现实"的漂移。</div></div>
+    <div class="item"><div class="it"><span class="n">D</span>决策记录制度化，且强制"备选方案"</div>
+      <div class="id">固定骨架 <span class="dim">Problem → Decision → Alternatives considered → Consequences</span>。<b>没记录"放弃了什么"的决策会反复被重开</b>。</div></div>
+    <div class="item"><div class="it"><span class="n">E</span>快照回放：keyless 也能验证外部行为</div>
+      <div class="id">不用 API key 就能在 CI 验证"模型/协议/用户看到的东西"：重放录制会话、diff 归一化 JSON-RPC + 重持久化的日志。</div></div>
+    <div class="item"><div class="it"><span class="n">F</span>验证世界，而非自报</div>
+      <div class="id">e2e 断言<b>重跑命令 / 重读文件</b>，"a keyword probe on the agent's own output lets a cheating agent pass"。AI 说"我改好了"不算数，磁盘上的文件才算。</div></div>
+    <div class="item"><div class="it"><span class="n">G</span>真实入口路径：测发布物，不测玩具</div>
+      <div class="id">产品可见的插件必须用真实组合（Loader + cordis.yml + 真实 bin）测试；bin 跑<b>构建后的 lib/</b> 而不是源码。</div></div>
+    <div class="item"><div class="it"><span class="n">H</span>能力三件套：换实现不碰契约</div>
+      <div class="id">每个可替换能力拆成 <b>Service Definition / Service Provider / Consumer</b>。消费者永远不 import 具体实现，模型看到的 schema 一字不变。</div></div>
+    <div class="item"><div class="it"><span class="n">I</span>事件溯源 + "模型可见 ⟺ 已记录"</div>
+      <div class="id">会话 = 只追加事件日志，历史由日志派生，回放 = 播种日志。<b>任何进入模型请求的东西必须能从日志重建</b>，且有运行时不变量断言。</div></div>
+    <div class="item"><div class="it"><span class="n">J</span>日志格式版本化：未知即拒绝，绝不静默</div>
+      <div class="id">单调整数版本 + 每事件 <span class="dim">ignorable</span> 标记。读到未知事件类型<b>拒绝恢复</b>而不是静默跳过——"静默跳过 = 安全失败"。</div></div>
+    <div class="item"><div class="it"><span class="n">K</span>防御模式文档化 + 审查对照</div>
+      <div class="id">把被咬过的 bug 类别（子进程、回调、异步状态、销毁/清理）写进文档，审查时逐类对照——把"血的教训"变成可查清单。</div></div>
+    <div class="item"><div class="it"><span class="n">L</span>事故闭环：postmortem → 修复 → 门</div>
+      <div class="id">出事故不追责，写 postmortem（记录证据），随后立刻有修复决策记录，并补上"若回归必失败"的测试。</div></div>
+  </div>
+</div>
+
+<div class="section" id="q3">
+  <div class="section-title">Q3 · 工程师如何在"AI 飞快、人无法逐行 review"时掌控项目 <span class="tag">control</span></div>
+  <div class="section-sub">皇帝不可能看每个基层的每一步——策略是：<b>不逐行管，管"契约、证据、记录、门"</b>。</div>
+
+  <div class="qcard" style="--c:var(--purple)">
+    <div class="qq">抓手 1 · 决策记录 = AI 的"奏折"，且强制与代码同步</div>
+    <div class="point"><div class="pd">非平凡改动<b>必须</b>在同一 PR 附 Agent Note，且 implemented 类用现在时描述"已装现实"——AI 改完代码必须同时改 note 里的事实，否则门拒绝。工程师 review 时看的是 <b>"这 PR 声称做了什么 + note 记录为什么"</b>，而不是 2000 行 diff 的每一行。</div></div>
+    <div class="point"><div class="pd">feature → mechanism 映射表把"每个产品功能挂到哪个扩展点"写成可检查的表——架构声称"不修改 loop 就能加功能"，这张表就是证明义务。</div></div>
+  </div>
+
+  <div class="qcard" style="--c:var(--cyan)">
+    <div class="qq">抓手 2 · 会话日志 = 皇帝随时可查的"基层实况"</div>
+    <div class="point"><div class="pd">"模型可见 ⟺ 已记录"运行时不变量：AI 看到的每个 prompt、说出的每句话、调用的每个工具、每个结果，都在只追加的 session 日志里，且可由日志重建模型请求（dev 不变量断言"loop 构造的请求 == 日志前缀重建的请求"）。工程师打开任何 session 的日志/轨迹，就能看到 AI <b>实际</b>干了什么——不是它汇报的，是记录下来的。</div></div>
+  </div>
+
+  <div class="qcard" style="--c:var(--gold)">
+    <div class="qq">抓手 3 · 审查提升到"契约 + 变化范围"层</div>
+    <div class="point"><div class="pd">不逐行 review，但每个 PR 必须：① 用 <span class="dim">change-scope</span> 工具算出实际影响面；② 跑覆盖该 diff 的最小测试集；③ 语义审查按 skill 要点：生命周期、并发、安全、销毁、模型视角、绕过路径——"一个实质性 blocker 的短审查，好过一堆 nit 的长清单"。blocking requirements 明确列出：<b>证据必须存在</b>（作者跑了哪些检查、CI 覆盖什么）。"AI 说测过了"不算，要看到执行证据。</div></div>
+  </div>
+
+  <div class="qcard" style="--c:var(--green)">
+    <div class="qq">抓手 4 · 门禁让"基层吹水"失效</div>
+    <div class="point"><div class="pd">质量门（覆盖率、lint、类型、doc-sync、供应商清单、重复代码）是机械的、无情的：AI 写得多快，门就查得多快。<b>验证世界而非自报</b>保证"改好了"必须有外部事实（重跑命令、重读文件）背书；快照测试保证任何模型可见变化都会以 diff 形式出现在 PR 里。皇帝不需要每天微服私访——基层的每一步都有记录，每个汇报都有外部证据，每个承诺都有退出码。</div></div>
+  </div>
+
+  <div class="qcard" style="--c:var(--red)">
+    <div class="qq">一句话总结</div>
+    <div class="pd" style="color:var(--text)">工程师放弃"逐行审查"的幻觉，换取四样东西：<b>决策记录（AI 声称的，机械强制与代码同步）、会话日志（AI 实际做的，可重建可回放）、外部证据（AI 汇报的，用世界验证）、机械门（AI 的承诺，用退出码兑现）</b>。方向不靠盯人，靠盯记录与门。</div>
+  </div>
+</div>
+</div>
+
+<div class="foot">DeepSeek Harness 工程方法 · dsh-quality-inspection · 时间线 2026-06-10 → 2026-08-14 · 共 12294 个提交</div>
+<script>
+  document.querySelectorAll('.tabbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'))
+      document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'))
+      btn.classList.add('active')
+      document.getElementById(btn.dataset.tab).classList.add('active')
+    })
+  })
+</script>
+</body>
+</html>

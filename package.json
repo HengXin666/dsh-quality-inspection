@@ -1,0 +1,28 @@
+{
+  "name": "dsh-quality-inspection",
+  "version": "0.1.0",
+  "description": "A portable project quality-inspection skill extracted from DeepSeek Harness: AI audits docs/context health, repairs stale context, decides deprecation, and recommends gates. Install into any project with one command.",
+  "keywords": ["ai", "agent", "skill", "quality", "audit", "documentation", "context", "harness", "deepseek"],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dsh-quality-inspection": "bin/install.js"
+  },
+  "files": [
+    "bin/install.js",
+    "skill/SKILL.md",
+    "skill/references/*.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node bin/install.js --check-self"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HengXin666/dsh-quality-inspection.git"
+  },
+  "homepage": "https://github.com/HengXin666/dsh-quality-inspection"
+}
